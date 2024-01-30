@@ -12,7 +12,7 @@
 void serve_client(int socket)
 {
     char buffer[BUFFER_SIZE] = {0};
-    char requestType[4]; // GET or POST
+    char requestType[4];
     char filePath[1024];
 
     // Read client's request
