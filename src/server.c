@@ -7,6 +7,19 @@
 
 #define PORT 8080
 
+void serve_client(int socket) {
+    char buffer[1024] = {0};
+    char *testResponse = "HTTP/1.1 200 OK\nContent-Type: text/html\n\n<html><body><h1>Welcome to My Simple Web Server</h1></body></html>";
+
+    // Read client's request
+    read(socket, buffer, 1024);
+    printf("Client request: %s\n", buffer);
+
+    // Send response to client
+    write(socket, testResponse, strlen(testResponse));
+    printf("HTML page sent to client\n");
+}
+
 int main()
 {
 
@@ -37,7 +50,7 @@ int main()
     }
 
     // Listen for client connections
-    if (listen(server_fd, 5) < 0)
+    if (listen(server_fd, 3) < 0)
     {
         perror("listen");
         exit(EXIT_FAILURE);
@@ -45,17 +58,23 @@ int main()
 
     printf("Server started on port %d\n", PORT);
 
+
+
     // Accept a connection and creates a new connected socket
+    while(1){
     if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
     {
         perror("accept");
-        exit(EXIT_FAILURE);
+        continue;
     }
     printf("Connection accepted\n");
 
-    // Close the socket
-    close(new_socket);
-    close(server_fd);
+    // Close the connected socket after serving the client
+    serve_client(new_socket);
 
+    close(new_socket);
+    close(new_socket);
+    
+    }
     return 0;
 }
