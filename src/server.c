@@ -5,9 +5,34 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/sendfile.h>
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
+
+const char *get_content_type(const char *path)
+{
+
+    if (strstr(path, ".html"))
+        return "text/html";
+    else if (strstr(path, ".css"))
+        return "text/css";
+    else if (strstr(path, ".js"))
+        return "application/javascript";
+    else if (strstr(path, ".png"))
+        return "image/png";
+    else if (strstr(path, ".jpg"))
+        return "image/jpeg";
+    else if (strstr(path, ".gif"))
+        return "image/gif";
+    else if (strstr(path, ".ico"))
+        return "image/x-icon";
+    else if (strstr(path, ".php"))
+        return "text/html";
+    else
+        return "text/plain";
+}
 
 void serve_client(int socket)
 {
@@ -16,8 +41,18 @@ void serve_client(int socket)
     char filePath[1024];
 
     // Read client's request
-    read(socket, buffer, BUFFER_SIZE);
-    sscanf(buffer, "%s %s", requestType, filePath);
+    ssize_t bytesRead = read(socket, buffer, BUFFER_SIZE);
+    if (bytesRead < 0)
+    {
+        perror("read");
+        return;
+    }
+
+    if (sscanf(buffer, "%s %s", requestType, filePath) < 2)
+    {
+        perror("Invalid request");
+        return;
+    }
 
     // Default file path if root is requested
     if (strcmp(filePath, "/") == 0)
@@ -26,7 +61,7 @@ void serve_client(int socket)
     }
 
     // Open the file
-    char fullPath[1024] = "./../public"; // Folder where files are stored
+    char fullPath[1024] = "./../public";
     strcat(fullPath, filePath);
     int file = open(fullPath, O_RDONLY);
 
@@ -39,15 +74,16 @@ void serve_client(int socket)
     }
     else
     {
-        char *header = "HTTP/1.1 200 OK\n\n";
+        struct stat file_stat;
+        fstat(file, &file_stat);
+
+        char header[BUFFER_SIZE];
+        sprintf(header, "HTTP/1.1 200 OK\nContent-Type: %s\nContent-Length: %ld\n\n", get_content_type(fullPath), file_stat.st_size);
         write(socket, header, strlen(header));
 
-        // Read and send file contents
-        int bytesRead;
-        while ((bytesRead = read(file, buffer, BUFFER_SIZE)) > 0)
-        {
-            write(socket, buffer, bytesRead);
-        }
+        // Send file using zero-copy mechanism
+        sendfile(socket, file, NULL, file_stat.st_size);
+
         close(file);
     }
 }
@@ -100,7 +136,6 @@ int main()
         }
         printf("Connection accepted\n");
 
-        // Close the connected socket after serving the client
         serve_client(new_socket);
 
         printf("page served\n");
