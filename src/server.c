@@ -80,7 +80,7 @@ void serve_client(int socket)
     }
 
     // Open the file
-    char fullPath[1024] = "./../public";
+    char fullPath[1024] = "./public";
     strcat(fullPath, filePath);
     int file = open(fullPath, O_RDONLY);
 
