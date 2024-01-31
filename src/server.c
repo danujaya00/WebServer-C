@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/sendfile.h>
+#include <sys/wait.h>
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
@@ -93,9 +94,9 @@ int main()
 
     int server_fd, new_socket;  // discriptors for server file descriptor( listens for incoming connections) and new socket(new socket for the connection)
     struct sockaddr_in address; // holds the address information for the socket
-                                // address.sin_family   -> address family Eg: AF_INET is the address family for IPv4.
-                                // address.sin_addr.s_addr  -> IP address of the host  Eg: INADDR_ANY listens to all availiable interfaces
-                                // address.sin_port   -> Port number on which the server will listen for incoming connections
+        // address.sin_family   -> address family Eg: AF_INET is the address family for IPv4.
+        // address.sin_addr.s_addr  -> IP address of the host  Eg: INADDR_ANY listens to all availiable interfaces
+        // address.sin_port   -> Port number on which the server will listen for incoming connections
     int addrlen = sizeof(address);
 
     // Creating socket file descriptor
@@ -136,11 +137,28 @@ int main()
         }
         printf("Connection accepted\n");
 
-        serve_client(new_socket);
+        pid_t pid = fork();
 
-        printf("page served\n");
+        //of pid is 0 then it is child process
+        //if pid is > 0 then it is parent process
+        //child process will serve the client
+        //parent process will close the socket and wait for another client
 
-        close(new_socket);
+        if (pid == 0) {
+            
+            close(server_fd);
+            serve_client(new_socket);
+            close(new_socket);
+            exit(0);
+        } else if (pid > 0) {
+            
+            close(new_socket);
+            while(waitpid(-1, NULL, WNOHANG) > 0); 
+            // Clean up zombie processes
+        } else {
+            perror("fork");
+            close(new_socket);
+        }
 
         printf("Connection closed\n");
     }
