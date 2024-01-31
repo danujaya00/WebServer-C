@@ -1,8 +1,6 @@
 .vscode
 
 *.exe
-output
+src/output
 server
-myserver
-
-
+src/myserver
