@@ -45,13 +45,31 @@ void serve_client(int socket)
     ssize_t bytesRead = read(socket, buffer, BUFFER_SIZE);
     if (bytesRead < 0)
     {
-        perror("read");
+        perror("Error reading from socket");
+        return;
+    }
+    else if (bytesRead == 0)
+    {
+        printf("Client disconnected\n");
         return;
     }
 
+    printf("\nClient request:\n");
+    int linesToPrint = 2;
+    int lineCount = 0;
+    char *line = strtok(buffer, "\n");
+    while (line != NULL && lineCount < linesToPrint) {
+        printf("%s\n", line);
+        line = strtok(NULL, "\n");
+        lineCount++;
+    }
+    // printf("\nHTTP Request:\n%s\n", buffer);
+
     if (sscanf(buffer, "%s %s", requestType, filePath) < 2)
     {
-        perror("Invalid request");
+        char *badRequest = "HTTP/1.1 400 Bad Request\nContent-Type: text/html\n\n<html><body><h1>400 Bad Request</h1></body></html>";
+        write(socket, badRequest, strlen(badRequest));
+        printf("Bad request from client\n");
         return;
     }
 
@@ -81,9 +99,18 @@ void serve_client(int socket)
         char header[BUFFER_SIZE];
         sprintf(header, "HTTP/1.1 200 OK\nContent-Type: %s\nContent-Length: %ld\n\n", get_content_type(fullPath), file_stat.st_size);
         write(socket, header, strlen(header));
+        printf("\nHTTP Response:\n%s", header);
 
         // Send file using zero-copy mechanism
-        sendfile(socket, file, NULL, file_stat.st_size);
+        ssize_t sentBytes = sendfile(socket, file, NULL, file_stat.st_size);
+        if (sentBytes < 0)
+        {
+            perror("Error sending file");
+        }
+        else
+        {
+            printf("Served file: %s\n", fullPath);
+        }
 
         close(file);
     }
@@ -94,9 +121,9 @@ int main()
 
     int server_fd, new_socket;  // discriptors for server file descriptor( listens for incoming connections) and new socket(new socket for the connection)
     struct sockaddr_in address; // holds the address information for the socket
-        // address.sin_family   -> address family Eg: AF_INET is the address family for IPv4.
-        // address.sin_addr.s_addr  -> IP address of the host  Eg: INADDR_ANY listens to all availiable interfaces
-        // address.sin_port   -> Port number on which the server will listen for incoming connections
+                                // address.sin_family   -> address family Eg: AF_INET is the address family for IPv4.
+                                // address.sin_addr.s_addr  -> IP address of the host  Eg: INADDR_ANY listens to all availiable interfaces
+                                // address.sin_port   -> Port number on which the server will listen for incoming connections
     int addrlen = sizeof(address);
 
     // Creating socket file descriptor
@@ -139,28 +166,34 @@ int main()
 
         pid_t pid = fork();
 
-        //of pid is 0 then it is child process
-        //if pid is > 0 then it is parent process
-        //child process will serve the client
-        //parent process will close the socket and wait for another client
+        // of pid is 0 then it is child process
+        // if pid is > 0 then it is parent process
+        // child process will serve the client
+        // parent process will close the socket and wait for another client
 
-        if (pid == 0) {
-            
+        if (pid == 0)
+        {
+
             close(server_fd);
             serve_client(new_socket);
             close(new_socket);
+            printf("Connection closed\n");
+            printf("-----------------------------------\n");
             exit(0);
-        } else if (pid > 0) {
-            
+        }
+        else if (pid > 0)
+        {
+
             close(new_socket);
-            while(waitpid(-1, NULL, WNOHANG) > 0); 
+            while (waitpid(-1, NULL, WNOHANG) > 0)
+                ;
             // Clean up zombie processes
-        } else {
+        }
+        else
+        {
             perror("fork");
             close(new_socket);
         }
-
-        printf("Connection closed\n");
     }
     return 0;
 }
