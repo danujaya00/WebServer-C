@@ -14,7 +14,6 @@
 
 const char *get_content_type(const char *path)
 {
-
     if (strstr(path, ".html"))
         return "text/html";
     else if (strstr(path, ".css"))
@@ -75,7 +74,6 @@ void serve_client(int socket)
     }
     if (strcmp(requestType, "GET") == 0)
     {
-        // Default file path if root is requested
         if (strcmp(filePath, "/") == 0)
         {
             strcpy(filePath, "/index.html");
@@ -139,7 +137,6 @@ void serve_client(int socket)
             }
         }
 
-        // Log POST data
         printf("Received POST data: %s\n", postData);
 
         char *okResponse = "HTTP/1.1 200 OK\nContent-Type: text/plain\n\nPOST data received.\n";
@@ -158,8 +155,8 @@ int main()
 
     int server_fd, new_socket;  // discriptors for server file descriptor( listens for incoming connections) and new socket(new socket for the connection)
     struct sockaddr_in address; // holds the address information for the socket
-                                // address.sin_family   -> address family Eg: AF_INET is the address family for IPv4.
-                                // address.sin_addr.s_addr  -> IP address of the host  Eg: INADDR_ANY listens to all availiable interfaces
+                                // address.sin_family -> address family Eg: AF_INET is the address family for IPv4.
+                                // address.sin_addr.s_addr -> IP address of the host  Eg: INADDR_ANY listens to all availiable interfaces
                                 // address.sin_port   -> Port number on which the server will listen for incoming connections
     int addrlen = sizeof(address);
 
@@ -229,8 +226,8 @@ int main()
         {
 
             close(new_socket);
-            while (waitpid(-1, NULL, WNOHANG) > 0)
-                ; // Clean up zombie processes
+            while (waitpid(-1, NULL, WNOHANG) > 0); 
+            // Clean up zombie processes
         }
         else
         {
